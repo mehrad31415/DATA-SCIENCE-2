@@ -1,0 +1,1487 @@
+---
+title: "Report"
+author: "Mehrad Haghshenas"
+date: "`r Sys.Date()`"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(fig.width=12, fig.height=8, fig.path='Figs/',
+                      echo = TRUE, warning =FALSE, message = FALSE, collapse = TRUE)
+```
+
+<div style="text-align: justify">
+
+
+#### 1) Research Question 
+
+**To what extent does the presence of local police stations contribute to deterring crime in New York City (USA)?**
+
+#### 2) Introduction
+
+The project aims to explore the effects of the presence and proximity of police stations on crime in New York City. For this aim, two datasets have been used: 
+
+1- The primary dataset used for this goal is the NYPD crime dataset. The dataset can be found on [(NYPD Complaint Data Current (Year to Date), n.d.)] (https://data.cityofnewyork.us/Public-Safety/NYPD-Complaint-Data-Current-Year-To-Date-/5uac-w243/data).
+2- The second dataset is the list of all NYC police stations, along with their locations. 
+
+In brief, the task is creating a visualization to indicate whether being approximate to police stations or not has any impact on the number of crimes. In other words, as people might assume, *does the number of crimes decrease in the neighborhoods where a presence of a patrol is noted?* The intention is to create a compelling and informative plot. The datasets will be wrangled and tidied as needed, and any plots for further clarification will be created. For further information on the *background*,  *motivation*, and *references*, please read the *proposal.* 
+
+In the following, first, for each dataset a brief introduction will be given. In the next step, the data sets will be wrangled, tidied, and the variables will be reformed as needed. Ultimately, the visualizations will be created. At the end of the report, the section *Exploratory Data Analysis (EDA)* consists of further data analysis which do not necessarily relate to the research question but can give an overview of other interesting facts.
+
+#### 3) NYPD crime dataset:
+
+
+The NYPD crime dataset is a breakdown of every felony, misdemeanor, and violation crime denoted by the New York Police Department during 2022. Precisely, the data consists of all the crimes in NYU between 1 January 2022 and 30 September 2022. The Office of Management Analysis and Planning reviews and updates this data every quarter. This dataset has 396979 observations and 36 predictors, namely:
+
+
+```{r echo = FALSE, message=FALSE, results='asis'}
+library (tidyverse)
+library (knitr)
+df = tribble (
+~predictors, ~descriptions,
+"CMPLNT_NUM" , " Randomly generated persistent ID for each complaint.",
+"ADDR_PCT_CD" , " The precinct in which the incident occurred." ,
+"BORO_NM" , " The name of the borough in which the incident occurred.",
+"CMPLNT_FR_DT" , " Exact date of occurrence for the reported event (or starting date of occurrence, if CMPLNT_TO_DT exists).",
+"CMPLNT_FR_TM" , " Exact time of occurrence for the reported event (or starting time of occurrence, if CMPLNT_TO_TM exists).",
+"CMPLNT_TO_DT" , " Ending date of occurrence for the reported event, if exact time of occurrence is unknown.",
+"CMPLNT_TO_TM" , " Ending time of occurrence for the reported event, if exact time of occurrence is unknown.",
+"CRM_ATPT_CPTD_CD" , " Indicator of whether crime was successfully completed or attempted, but failed or was interrupted prematurely.",
+"HADEVELOPT" , " Name of NYCHA housing development of occurrence, if applicable.",
+"HOUSING_PSA" , " Development Level Code Number.",
+"JURISDICTION_CODE" , " Jurisdiction responsible for incident. Either internal, like Police(0), Transit(1), and Housing(2); or external(3), like Correction, Port Authority, etc.",
+"JURIS_DESC" , " Description of the jurisdiction code.",
+"KY_CD" , " Three digit offense classification code.",
+"LAW_CAT_CD" , " Level of offense: felony, misdemeanor, violation.",
+"LOC_OF_OCCUR_DESC" , " Specific location of occurrence in or around the premises; inside, opposite of, front of, rear of.",
+"OFNS_DESC" , " Description of offense corresponding with key code.",
+"PARKS_NM" , " Name of NYC park, playground or greenspace of occurrence, if applicable (state parks are not included).",
+"PATROL_BORO" , " The name of the patrol borough in which the incident occurred.",
+"PD_CD" , " Three digit internal classification code (more granular than Key Code).",
+"PD_DESC" , " Description of internal classification corresponding with PD code (more granular than Offense Description).",
+"PREM_TYP_DESC" , " Specific description of premises; grocery store, residence, street, etc.",
+"RPT_DT" , " Date event was reported to police.",
+"STATION_NAME" , " Transit station name.",
+"SUSP_AGE_GROUP" , " Suspect’s Age Group.",
+"SUSP_RACE" , " Suspect’s Race Description.",
+"SUSP_SEX" , " Suspect’s Sex Description.",
+"TRANSIT_DISTRICT" , " Transit district in which the offense occurred.",
+"VIC_AGE_GROUP" , " Victim’s Age Group.",
+"VIC_RACE" , " Victim’s Race Description.",
+"VIC_SEX" , " Victim’s Sex Description.",
+"X_COORD_CD" , " X-coordinate for New York State Plane Coordinate System, Long Island Zone, NAD 83, units feet (FIPS 3104).",
+"Y_COORD_CD" , " Y-coordinate for New York State Plane Coordinate System, Long Island Zone, NAD 83, units feet (FIPS 3104).",
+"Latitude" , " Midblock Latitude coordinate for Global Coordinate System, WGS 1984, decimal degrees (EPSG 4326).",
+"Longitude" , " Midblock Longitude coordinate for Global Coordinate System, WGS 1984, decimal degrees (EPSG 4326).",
+"Lat_Lon", "Location",
+"New Georeferenced Column", "Point"
+)
+kable(df, caption = "the predictors")
+```
+
+The first step is to read the dataset which is saved as a csv file. Furthermore, given that the names of the predictors are a bit vague, the column names will be renamed to make them more informative. Note that the dataset consists of many variables and information. For the current project not all variables will be used. Regardless, I will rename all the column names should someone want to apply further analysis on the tidied version of the dataset. 
+
+```{r}
+df <- read.csv("NYPD_Complaint_Data_Current__Year_To_Date_.csv")
+df <- df %>%
+  rename (
+     id = CMPLNT_NUM,
+     precinct = ADDR_PCT_CD,
+     town = BORO_NM,
+     start_date = CMPLNT_FR_DT,
+     start_time = CMPLNT_FR_TM,
+     end_date = CMPLNT_TO_DT,
+     end_time = CMPLNT_TO_TM,
+     crime_completed = CRM_ATPT_CPTD_CD, 
+     NYCHA_housing = HADEVELOPT,
+     development_level_code = HOUSING_PSA,
+     juris_code = JURISDICTION_CODE,
+     juris_description = JURIS_DESC,
+     class_code = KY_CD,
+     crime_type = LAW_CAT_CD,
+     specific_loc = LOC_OF_OCCUR_DESC,
+     crime_description = OFNS_DESC,
+     park = PARKS_NM,
+     patrol_boro = PATROL_BORO,
+     granular_class_code = PD_CD,
+     granular_crime_description = PD_DESC,
+     premises = PREM_TYP_DESC,
+     date_of_report = RPT_DT,
+     station = STATION_NAME,
+     age = SUSP_AGE_GROUP,
+     race = SUSP_RACE,
+     sex = SUSP_SEX,
+     district = TRANSIT_DISTRICT,
+     victim_age = VIC_AGE_GROUP,
+     victim_race = VIC_RACE,
+     victim_sex  = VIC_SEX,
+     x = X_COORD_CD,
+     y = Y_COORD_CD,
+     lat = Latitude,
+     lon = Longitude,
+     lat_lon = Lat_Lon,
+     point = New.Georeferenced.Column
+  )
+```
+
+From this dataset, only the necessary variables for answering the research question will be extracted.
+
+```{r}
+final_df <- df %>%
+  mutate (id = row_number()) %>%
+  select (id, precinct, town, crime_type, lat, lon)
+```
+
+
+#### 4) Police stations in NYC dataset: 
+
+The second dataset consists of the name of the police stations in NYC, with their longitude and latitude. Such a dataset was not found on the internet. Therefore, a list of the names of all police stations in New York was obtained. [(Precincts - NYPD, n.d.)](https://www.nyc.gov/site/nypd/bureaus/patrol/precincts-landing.page). Moreover, the longitude and latitude of each precinct will be obtained by searching the names of the stations in Google Maps. The final dataset will hold 77 observations (the number of precincts) and four predictors: station name (precinct), the town the precinct is located, latitude, and longitude. It is worth mentioning that the initial plan was that the Police stations in NYC dataset only holds three predictors as it is noted in the proposal. However, "town2" variable has been added as well. But there is a town variable in the df dataset which was selected when making the final_df dataframe. What is the difference between the two? That variable refers to the "town" where the incident happened. This variable refers to the "town" where the police station is located. In most cases, they might be same but that might not always be true. Therefore, that will be examined further down in our analysis and making a "town2" variable for the police stations in NYC dataset will make it feasible. 
+
+
+One way to create the Police stations in NYC dataset is to manually search the address of the 77 precincts and attain their latitude and longitude using for example bboxfinder or google maps. However, this is a brute-force and not so much sufficient way. In the following, the more automated approach will be described. As the first step, the webpage [(Precincts - NYPD, n.d.)](https://www.nyc.gov/site/nypd/bureaus/patrol/precincts-landing.page) containing the "names" and "addresses" of the precincts' located in New York will be scraped using the "httr" and "rvest" libraries. The table scraped from the mentioned website will be stored in a variable. 
+
+```{r}
+library (httr)
+library (rvest)
+
+police_stations <- GET("https://www.nyc.gov/site/nypd/bureaus/patrol/precincts-landing.page") %>%
+  content() %>%
+  html_node("table") %>%
+  html_table() 
+
+```
+
+At the first sight it is seen that in the "Precinct" variable, values "Manhattan", "Bronx", "Brooklyn", "Queens", and "Staten Island" exist. These are obviously not the name of precincts but they are the town that the following precincts after them are located in. Therefore, the first objective would be to filter them out and instead create a "town2" variable that gives each precinct the corresponding town it is located in. Furthermore, the addresses in the table only consist of the name of the street and postal code (local address). Searching for the latitude and longitude of such addresses, will take a lot of computing time. This is mainly due to the reason that it is likely that the same street name will be in other cities and countries making the search inaccurate and time-consuming. To improve the accuracy and efficiency in the *automated* search for the longitude and latitude, "New York" and "United States" will be appended to the end of each string address and the "town name" will be pre-pended. As the last step the "police_stations" dataframe is tidied (generally using camel-case names in R is not recommended, so the column names have been changed to lower case letters). 
+
+
+```{r}
+
+police_stations$Phone[2:23]  = "Manhattan"
+police_stations$Phone[25:36] = "Bronx"
+police_stations$Phone[38:60] = "Brooklyn"
+police_stations$Phone[62:77] = "Queens"
+police_stations$Phone[79:82] = "Staten Island"
+
+police_stations <- police_stations %>%
+  filter (!(Precinct == "Manhattan" | Precinct =="Bronx" | Precinct ==  "Brooklyn" | Precinct == "Queens" | Precinct == "Staten Island" )) %>% 
+  transmute (precinct = Precinct,
+             town2 = Phone,
+             address = paste0(Address, ", ", town2, ", New York, NY, United States"))
+```
+
+
+As the final touch, if you see the distinct precincts in the *final_df* dataframe obtained in the last part of section *3*, they are all numbers (except for the **20** missing values). However, the distinct precincts in the *police_stations* dataframe are all numbers except for "Midtown South Precinct", "Midtown North Precinct", and "Central Park Precinct" precincts. Comparing the two datasets *final_df* and *police_stations*, it is seen that all the distinct precincts in the two dataframes are equal except for the followings:
+
+1- there are three precinct numbers 14, 18, and 22 which are available in the "final_df" dataset but cannot be seen in the "police_stations" dataset. 
+2- "Midtown South Precinct", "Midtown North Precinct", and "Central Park Precinct" precincts are in the "police_stations" dataset but not in "final_df" dataset.
+
+However, are these precincts really different from each other? Conversely, it is possible that they refer to the same precinct but just have different names? Seeing that in both cases only 3 precincts are missing raises the chance that this is actually true. However, to prove this formally, "14th precinct New York" was searched in Google, the result it brought was "Midtown South Precinct". Moreover, "18th precinct New York" was searched in Google and the result it brought was "Midtown North Precinct". Finally, "22th precinct New York" was searched on Google and the result was "Central Park Precinct". Therefore, we have enough evidence to conclude that these names refer to the same precinct but just have different names; briefly:
+
+**Midtown South Precinct == 14**
+**Midtown North Precinct == 18**
+**Central Park Precinct == 22**
+
+After reaching the above result, these names will be changed in the "police_stations" dataframe to match the corresponding names in the "final_df" data frame. Likewise, note that the general form of the values in the precinct column of the "police_stations" dataframe is 1st Precinct, 5th Precinct, 6th Precinct, etc. (except for the mentioned three). In other words, they consist of a number followed by characters. Therefore, to match these values to their corresponding numbers in the precinct variable in the final_df dataframe, their number should be extracted from the string. The following code block defines the whole process of matching the values of the precinct variable in the two dataframes "police_stations" and "final_df". Why is this important though? In general it is important that in a set of data frames in a project, those indicating the same value should have the same reference. Moreover, should the data frames be joined, having the same values will make this possible. 
+
+
+```{r}
+library(stringr)
+police_stations <- police_stations %>%
+  mutate ( precinct = replace(precinct, precinct == "Midtown South Precinct", "14th Precinct"),
+           precinct = replace(precinct, precinct == "Midtown North Precinct", "18th Precinct"),
+           precinct = replace(precinct, precinct == "Central Park Precinct",  "22nd Precinct"),
+           precinct = as.numeric(str_extract(precinct, "[0-9]+")))
+
+```
+
+Moving on, in the following the longitude and latitude of each address of precinct from the "police_stations" dataset is attained. So the coordinates_police_stations data frame consists of the 77 precincts, the towns the precinct is located in, their full address, and their longitudes and latitudes. However, looking at the dataset, three precincts have a "NA" for their coordinates; namely: 6th Precinct, 28th Precinct, 103rd Precinct. This might have happened given that the automated search did not find these places. Thus, the coordinates of these three locations will be searched manually and added to the data set - Although the automated search did not fully give us the desired dataset, searching for 3 manual coordinates is better than 77 :). 
+
+```{r}
+library(tidygeocoder)
+
+coordinates_police_stations <- police_stations %>%
+  geocode(address) %>%
+  mutate(lat = replace(lat, precinct == 6, 40.7342332),
+         long = replace(long, precinct == 6, -74.0076419),
+         lat = replace(lat, precinct == 28, 40.8088502),
+         long = replace(long, precinct == 28, -73.9547584),
+         lat = replace(lat, precinct == 103, 40.7070802),
+         long = replace(long, precinct == 103, -73.7948095))
+```
+
+We now have our data set holding 77 observations (the number of precincts) and five predictors: precinct name, town, address latitude, and longitude. As the final step of this section, some random precincts have been selected from the table. Their coordinates have been manually searched in google maps and subsequently, compared with the coordinates the "geocode" function has attained. The coordinates have shown to be equal up to at least 4 decimal points. The accuracy of the "geocode" function will surely suffice for this project. However, to further ensure this deemed statement, a simple map plot has been created to see an overview of how the police stations scatter in NYC. 
+
+```{r}
+library(leaflet)
+leaflet(coordinates_police_stations) %>% addTiles() %>%
+  addMarkers(~long, ~lat)
+```
+
+As seen above one specific police station is further away than the rest and is located at "Rochester". That cannot be right can it? To answer this question, the particular police station will be extracted for further analysis. To do so, the coordinates of New York City has been attained on bboxfinder. Particularly, (-74.541292,40.380159) and (-73.255892,41.096041) are the bottom-left and top-right points (in order) of the rectangle containing New York city. It is reasonable to think that all the police stations fall into this rectangle. Therefore, the police stations that contain a longitude and latitude higher or lower than those for NYC will be filtered. This process can be seen in the following code block:
+
+
+```{r}
+nyc_bb <- tribble (
+  ~x , ~y,
+  -74.541292,40.380159,
+  -73.255892,41.096041
+)
+
+coordinates_police_stations %>%
+  filter ((lat > max (nyc_bb$y) | lat < min (nyc_bb$y)) & (long > max (nyc_bb$x) | long < min (nyc_bb$x)))
+```
+```{r}
+coordinates_police_stations %>%
+  filter ((lat > max (nyc_bb$y) | lat < min (nyc_bb$y)) & (long > max (nyc_bb$x) | long < min (nyc_bb$x))) %>%
+  leaflet() %>% addTiles() %>%
+  addMarkers(~long, ~lat) %>%
+  addCircleMarkers(~long, ~lat)
+```
+
+As seen, the 9th precinct is the only police station outside of the New York City box - this is the precinct which was located at Rochester. Searching the address of this location on Google maps, it is seen that the "geocode" function has provided the wrong location. The correct latitude and longitude are 40.7265591,-73.9900125; which massively differs from 43.148009,-77.594437 provided by "geocode". So this will be changed in the coordinates_police_stations dataframe:
+
+```{r}
+coordinates_police_stations$lat[coordinates_police_stations$precinct == 9]  = 40.7265591
+coordinates_police_stations$long[coordinates_police_stations$precinct == 9] = -73.9900125
+```
+
+After doing so, it is seen that no police station falls outside of the New York City box.
+
+```{r}
+coordinates_police_stations %>%
+  filter ((lat > max (nyc_bb$y) | lat < min (nyc_bb$y)) & (long > max (nyc_bb$x) | long < min (nyc_bb$x)))
+```
+
+
+However, even though all the police stations are inside the box, given that the "geocode" function made a large mistake in predicting the coordinates of a precinct, albeit having a complete address, this gives raise to the thought that the function might have errors in predicting other coordinates as well. In other words, there might be an error but the predicted coordinates have fallen into the New York city box so using our above filter the error cannot be determined. To increase the accuracy of our dataframe, in the following, another approach has been used to achieve the coordinates. We will then compare the coordinates and analyze the comparison. 
+
+To achieve the coordinates, a version of the function "geocode" called "geocode_mapquest" from a library named "mapquestr" has been used. Note that the given key has been generated from my account on[develop mapquest](https://developer.mapquest.com/user/me/apps). If the key does not work on your laptop please make an account on the website and generate a key as a replacement for the given one below. It takes less than a minute. After querying the coordinates of the precincts, the coordinates_police_stations2 dataframe is created. As seen, this dataframe has 80 rows not 77. The reason is that this function has predicted two distinctive coordinates for three precincts; namely, precinct 28, precinct 52, and 63. This might be the case that it predicts two coordinates for the mentioned precincts but cannot determine which one is correct.
+
+> 1- precinct 28: (40.80843,-73.95263) and (40.74027,-74.00235) have both been given as the coordinates. However, looking at Google maps, the actual coordinates is (40.8088502,-73.9547584), which is roughly equal to the first given coordinate. As a result both will be discarded and the precise one will be placed. Even if they are not replaced it would not affect our project given the precision.
+
+> 2- precinct 52: (40.86927, -73.87994) and (40.86859, -73.88044) have both been given as the coordinates. However, looking at Google maps, the actual coordinates is (40.8690962,-73.8818559), which is roughly equal to both coordinates. As a result both will be discarded and the precise one will be placed.
+
+> 3- precinct 63: (40.64068, -73.94268) and (40.66877, -73.94504) have both been given as the coordinates. However, looking at Google maps, the actual coordinates is (40.627926,-73.9438047), which is roughly equal to the first given coordinate, although both are quite off. As a result both will be discarded and the precise one will be placed.
+
+Accordingly, the two data frame will be "left-joined" based on their "addresses". As a result, we have a dataset, which has columns lat and long (which are the coordinates achieved by the geocode function from the tidygeocoder library) and lat2 and long2 (which are the coordinates achieved by the geocode_mapquest function from the mapquestr library). Furthermore, in our proof-checking if the two approaches give coordinates which have a distant more than 0.01, then the coordinates will be checked whether they have been predicted correctly. Otherwise, if the distant is lower than 0.01 (or equal to) because the two approaches have given a decent approximation of the coordinates, then the predicted coordinate will be accepted as correct (note that 0.01 in longitude and latitude measures is roughly equal to 1.1 Kilometers). This method we used for proof-checking is very similar to convergent validity in research methodology, where if two or more approaches give the same answer their methods can be deemed accurate (or they are all wrong). However, if we have a credible method, which in this case is looking at the coordinates from Google maps, and the approaches give roughly the same answers as Google maps, then they can both be considered credible. 
+
+```{r}
+remotes :: install_github ("chiouey/mapquestr")
+library (mapquestr)
+
+coordinates_police_stations2 <- 
+  geocode_mapquest(police_stations$address, key = "3Vk0QyzzsL1GOlFgISetIVXhKQ5nu8C7") %>% 
+  as.data.frame() %>%
+  rename (lat2 = lat , long2 = lon) %>%
+  filter (!(lat2 == 40.80843 | lat2 == 40.74027 | lat2 == 40.86927 | lat2 == 40.86859 | lat2 == 40.64068 | lat2 == 40.66877)) %>%
+  add_row(address = "2271-89 8th Avenue, Manhattan, New York, NY, United States", lat2 = 40.8088502, long2 = -73.9547584) %>%
+  add_row(address = "3016 Webster Avenue, Bronx, New York, NY, United States", lat2 = 40.8690962, long2 = -73.8818559) %>%
+  add_row(address = "1844 Brooklyn Avenue, Brooklyn, New York, NY, United States", lat2 = 40.627926, long2 = -73.9438047)
+  
+check_coordinates <- coordinates_police_stations %>% left_join(coordinates_police_stations2, by = "address") %>%
+  mutate (check = sqrt ( (long - long2)^2 + (lat - lat2) ^2  ) <= 0.01 )
+```
+
+As seen, only two precincts have different coordinates from the two approaches; i.e., the "check" column in the "check_coordinates" data frame is "FALSE"; namely, precinct 22, and precinct 114. For precinct 22 long and lat are more accurate and for precinct 114 long2 and lat2 are nearer to the actual coordinates of these precincts on Google maps. The values of lon and lat for these two precincts will be replaced by the ones obtained from Google maps (even if we do not do so, the result will not change. However, when we have obtained the coordinates from Google maps why not make our dataframe more accurate).
+
+```{r}
+coord <- coordinates_police_stations %>%
+  select (-address) %>%
+  mutate ( lat = replace ( lat , precinct == 22, 40.7692816),
+           long = replace ( long , precinct == 22, -73.9175163),
+           lat = replace ( lat , precinct == 114, 40.7838188),
+           long = replace ( long , precinct == 114, -73.9677572)) %>%
+  rename (latitude = lat, longitude = long)
+```
+
+"coord" is our final data frame from this section. It contains 77 observations (the number of precincts) and four predictors: precinct name, town, latitude, and longitude. Ultimately, one might think that obtaining the 77 precincts' coordinates from Google maps would have been much easier. it is true for this case because there are only 77 precincts. However, when the number grows using an automatic way will be much less time-consuming. Moreover, in this approach two distinctive methods were used. In practice, only using one method might suffice for the project. 
+
+```{r}
+View (final_df)
+View (coord)
+```
+
+#### 5) Vizualization:
+
+After attaining the two desired data sets: "coord" & "final_df"; in this section we will use plots to answer the research question. The first step will be to join the dataframes. 
+
+```{r}
+geo <- final_df %>%
+  left_join(coord, by = "precinct") 
+```
+
+As the next step the distance between the *"coordinates of the crime"* and the *coordinates of the precinct in which the crime occurred* will be calculated. The below shows that roughly 99.71% of the crimes occur outside the range of 11 meters from a precinct where as only 0.28% of crimes happen in the 11 meters proximity to a precinct. Note that 1 difference in coordinates is roughly equal to 111 Km. 
+
+```{r}
+geo %>%
+  mutate (
+    check = sqrt (((lon - longitude) ^ 2) + ((lat - latitude) ^ 2)) <= 0.0001
+    ) %>% 
+  group_by(check) %>% 
+  summarize (n = n()) %>%
+  mutate (prop = format(round(n / sum (n), 4), nsmall = 4))
+```
+
+The below shows that roughly 99.43% of the crimes occur outside the range of 22 meters from a precinct where as only 0.56% of crimes happen in the 22 meters proximity to a precinct. 
+
+```{r}
+geo %>%
+  mutate (
+    check = sqrt (((lon - longitude) ^ 2) + ((lat - latitude) ^ 2)) <= 0.0002
+    ) %>% 
+  group_by(check) %>% 
+  summarize (n = n()) %>%
+  mutate (prop = format(round(n / sum (n), 4), nsmall = 4))
+```
+
+The below shows that roughly 97.07% of the crimes occur outside the range of 33 meters from a precinct where as only 2.92% of crimes happen in the 33 meters proximity to a precinct. 
+
+```{r}
+geo %>%
+  mutate (
+    check = sqrt (((lon - longitude) ^ 2) + ((lat - latitude) ^ 2)) <= 0.0003
+    ) %>% 
+  group_by(check) %>% 
+  summarize (n = n()) %>%
+  mutate (prop = format(round(n / sum (n), 4), nsmall = 4))
+```
+
+The below shows that roughly 94.08% of the crimes occur outside the range of 44 meters from a precinct where as 5.91% of crimes happen in the 44 meters proximity to a precinct. 
+
+```{r}
+geo %>%
+  mutate (
+    check = sqrt (((lon - longitude) ^ 2) + ((lat - latitude) ^ 2)) <= 0.0004
+    ) %>% 
+  group_by(check) %>% 
+  summarize (n = n()) %>%
+  mutate (prop = format(round(n / sum (n), 4), nsmall = 4))
+```
+
+The below shows that roughly 91.77% of the crimes occur outside the range of 55 meters from a precinct where as 8.22% of crimes happen in the 55 meters proximity to a precinct. 
+
+```{r}
+geo %>%
+  mutate (
+    check = sqrt (((lon - longitude) ^ 2) + ((lat - latitude) ^ 2)) <= 0.0005
+    ) %>% 
+  group_by(check) %>% 
+  summarize (n = n()) %>%
+  mutate (prop = format(round(n / sum (n), 4), nsmall = 4))
+```
+
+
+The below shows that roughly 90.38% of the crimes occur outside the range of 66 meters from a precinct where as 9.62% of crimes happen in the 66 meters proximity to a precinct. 
+
+```{r}
+geo %>%
+  mutate (
+    check = sqrt (((lon - longitude) ^ 2) + ((lat - latitude) ^ 2)) <= 0.0006
+    ) %>% 
+  group_by(check) %>% 
+  summarize (n = n()) %>%
+  mutate (prop = format(round(n / sum (n), 4), nsmall = 4))
+```
+
+The below shows that roughly 88.95% of the crimes occur outside the range of 77 meters from a precinct where as 11.05% of crimes happen in the 77 meters proximity to a precinct. 
+
+```{r}
+geo %>%
+  mutate (
+    check = sqrt (((lon - longitude) ^ 2) + ((lat - latitude) ^ 2)) <= 0.0007
+    ) %>% 
+  group_by(check) %>% 
+  summarize (n = n()) %>%
+  mutate (prop = format(round(n / sum (n), 4), nsmall = 4))
+```
+
+The below shows that roughly 88.87% of the crimes occur outside the range of 88 meters from a precinct where as 11.12% of crimes happen in the 88 meters proximity to a precinct. 
+
+```{r}
+geo %>%
+  mutate (
+    check = sqrt (((lon - longitude) ^ 2) + ((lat - latitude) ^ 2)) <= 0.0008
+    ) %>% 
+  group_by(check) %>% 
+  summarize (n = n()) %>%
+  mutate (prop = format(round(n / sum (n), 4), nsmall = 4))
+```
+
+The below shows that roughly 88.48% of the crimes occur outside the range of 99 meters from a precinct where as 11.51% of crimes happen in the 99 meters proximity to a precinct. 
+
+```{r}
+geo %>%
+  mutate (
+    check = sqrt (((lon - longitude) ^ 2) + ((lat - latitude) ^ 2)) <= 0.0009
+    ) %>% 
+  group_by(check) %>% 
+  summarize (n = n()) %>%
+  mutate (prop = format(round(n / sum (n), 4), nsmall = 4))
+```
+
+If the distance is lower than or equal to 0.001 (roughly 111 metres) then the "check" column will get a value "true" otherwise it will get "false". The table shows that 350669	crimes have happened at least 111 meters away from a precinct and 46289	have happened in the 111 meters approximity of a precinct. 20 of the crimes coordinates are not known which given the large dataset does not have a large impact on our results. 
+
+```{r}
+geo %>%
+  mutate (
+    check = sqrt (((lon - longitude) ^ 2) + ((lat - latitude) ^ 2)) <= 0.001
+    ) %>% 
+  group_by(check) %>% 
+  summarize (n = n()) %>%
+  mutate (prop = format(round(n / sum (n), 4), nsmall = 4))
+```
+
+As seen in the below bar chart, nearly 88% of the crimes occur at least 111 meters away from a precinct whereas 12% occur in the range of 111 meters from a precinct. 
+
+```{r}
+geo %>% 
+  mutate (
+    check = sqrt (((lon - longitude) ^ 2) + ((lat - latitude) ^ 2)) <= 0.001
+    ) %>%
+  group_by(check) %>%
+  summarize (n = n()) %>%
+  ggplot (mapping = aes (x=check, y = n / sum (n), fill ="red"), lab) +
+  geom_col() +
+  geom_text(mapping = aes(label= format(round(n / sum (n), 4), nsmall = 4)), vjust = -0.25) +
+  ylab ("proportion") +
+  xlab ("distance") +
+  ggtitle("The proportion of crime against the distance to a police station") +
+  scale_x_discrete(labels=c("more than 111 meters", "less than 111 meters", "Not known")) +
+  theme(legend.position="none")
+  
+
+```
+The below shows that roughly 85.74% of the crimes occur outside the range of 222 meters from a precinct where as 14.26% of crimes happen in the 222 meters proximity to a precinct. 
+
+```{r}
+geo %>%
+  mutate (
+    check = sqrt (((lon - longitude) ^ 2) + ((lat - latitude) ^ 2)) <= 0.002
+    ) %>% 
+  group_by(check) %>% 
+  summarize (n = n()) %>%
+  mutate (prop = format(round(n / sum (n), 4), nsmall = 4))
+```
+
+The below shows that roughly 81.85% of the crimes occur outside the range of 333 meters from a precinct where as 18.14% of crimes happen in the 333 meters proximity to a precinct. 
+
+```{r}
+geo %>%
+  mutate (
+    check = sqrt (((lon - longitude) ^ 2) + ((lat - latitude) ^ 2)) <= 0.003
+    ) %>% 
+  group_by(check) %>% 
+  summarize (n = n()) %>%
+  mutate (prop = format(round(n / sum (n), 4), nsmall = 4))
+```
+
+The below shows that roughly 78.09% of the crimes occur outside the range of 444 meters from a precinct where as 21.90% of crimes happen in the 444 meters proximity to a precinct. 
+
+```{r}
+geo %>%
+  mutate (
+    check = sqrt (((lon - longitude) ^ 2) + ((lat - latitude) ^ 2)) <= 0.004
+    ) %>% 
+  group_by(check) %>% 
+  summarize (n = n()) %>%
+  mutate (prop = format(round(n / sum (n), 4), nsmall = 4))
+```
+
+The below shows that roughly 73.54% of the crimes occur outside the range of 555 meters from a precinct where as 26.45% of crimes happen in the 555 meters proximity to a precinct. 
+
+```{r}
+geo %>%
+  mutate (
+    check = sqrt (((lon - longitude) ^ 2) + ((lat - latitude) ^ 2)) <= 0.005
+    ) %>% 
+  group_by(check) %>% 
+  summarize (n = n()) %>%
+  mutate (prop = format(round(n / sum (n), 4), nsmall = 4))
+```
+
+The below shows that roughly 68.46% of the crimes occur outside the range of 666 meters from a precinct where as 31.53% of crimes happen in the 666 meters proximity to a precinct. 
+
+```{r}
+geo %>%
+  mutate (
+    check = sqrt (((lon - longitude) ^ 2) + ((lat - latitude) ^ 2)) <= 0.006
+    ) %>% 
+  group_by(check) %>% 
+  summarize (n = n()) %>%
+  mutate (prop = format(round(n / sum (n), 4), nsmall = 4))
+```
+
+The below shows that roughly 63.27% of the crimes occur outside the range of 777 meters from a precinct where as 36.72% of crimes happen in the 777 meters proximity to a precinct. 
+
+```{r}
+geo %>%
+  mutate (
+    check = sqrt (((lon - longitude) ^ 2) + ((lat - latitude) ^ 2)) <= 0.007
+    ) %>% 
+  group_by(check) %>% 
+  summarize (n = n()) %>%
+  mutate (prop = format(round(n / sum (n), 4), nsmall = 4))
+```
+
+The below shows that roughly 58.10% of the crimes occur outside the range of 888 meters from a precinct where as 41.89% of crimes happen in the 888 meters proximity to a precinct. 
+
+```{r}
+geo %>%
+  mutate (
+    check = sqrt (((lon - longitude) ^ 2) + ((lat - latitude) ^ 2)) <= 0.008
+    ) %>% 
+  group_by(check) %>% 
+  summarize (n = n()) %>%
+  mutate (prop = format(round(n / sum (n), 4), nsmall = 4))
+```
+
+The below shows that roughly 53.38% of the crimes occur outside the range of 999 meters from a precinct where as 46.61% of crimes happen in the 999 meters proximity to a precinct. 
+
+```{r}
+geo %>%
+  mutate (
+    check = sqrt (((lon - longitude) ^ 2) + ((lat - latitude) ^ 2)) <= 0.009
+    ) %>% 
+  group_by(check) %>% 
+  summarize (n = n()) %>%
+  mutate (prop = format(round(n / sum (n), 4), nsmall = 4))
+```
+
+This time the distance has been changed to 0.01 (1.11 Km). The below shows that roughly 49.05% of the crimes occur outside the range of 1.11 Kilometers from a precinct where as 50.94% of crimes happen in the 1.11 meters proximity to a precinct. 
+
+```{r}
+geo %>%
+  mutate (
+    check = sqrt (((lon - longitude) ^ 2) + ((lat - latitude) ^ 2)) <= 0.01
+    ) %>% 
+  group_by(check) %>% 
+  summarize (n = n()) %>%
+  mutate (prop = format(round(n / sum (n), 4), nsmall = 4))
+```
+
+The below shows that roughly 18.18% of the crimes occur outside the range of 2.22 Km from a precinct where as 81.81% of crimes happen in the 2.22 Km proximity to a precinct. 
+
+```{r}
+geo %>%
+  mutate (
+    check = sqrt (((lon - longitude) ^ 2) + ((lat - latitude) ^ 2)) <= 0.02
+    ) %>% 
+  group_by(check) %>% 
+  summarize (n = n()) %>%
+  mutate (prop = format(round(n / sum (n), 4), nsmall = 4))
+```
+
+The below shows that roughly 7.30% of the crimes occur outside the range of 3.33 Km from a precinct where as 92.70% of crimes happen in the 3.33 Km proximity to a precinct. 
+
+```{r}
+geo %>%
+  mutate (
+    check = sqrt (((lon - longitude) ^ 2) + ((lat - latitude) ^ 2)) <= 0.03
+    ) %>% 
+  group_by(check) %>% 
+  summarize (n = n()) %>%
+  mutate (prop = format(round(n / sum (n), 4), nsmall = 4))
+```
+
+The below shows that roughly 4.14% of the crimes occur outside the range of 4.44 Km from a precinct where as 95.85% of crimes happen in the 4.44 Km proximity to a precinct. 
+
+```{r}
+geo %>%
+  mutate (
+    check = sqrt (((lon - longitude) ^ 2) + ((lat - latitude) ^ 2)) <= 0.04
+    ) %>% 
+  group_by(check) %>% 
+  summarize (n = n()) %>%
+  mutate (prop = format(round(n / sum (n), 4), nsmall = 4))
+```
+
+The below shows that roughly 2.64% of the crimes occur outside the range of 5.55 Km from a precinct where as 97.36% of crimes happen in the 5.55 Km proximity to a precinct. 
+
+```{r}
+geo %>%
+  mutate (
+    check = sqrt (((lon - longitude) ^ 2) + ((lat - latitude) ^ 2)) <= 0.05
+    ) %>% 
+  group_by(check) %>% 
+  summarize (n = n()) %>%
+  mutate (prop = format(round(n / sum (n), 4), nsmall = 4))
+```
+
+The below shows that roughly 1.07% of the crimes occur outside the range of 6.66 Km from a precinct where as 98.92% of crimes happen in the 6.66 Km proximity to a precinct. 
+
+```{r}
+geo %>%
+  mutate (
+    check = sqrt (((lon - longitude) ^ 2) + ((lat - latitude) ^ 2)) <= 0.06
+    ) %>% 
+  group_by(check) %>% 
+  summarize (n = n()) %>%
+  mutate (prop = format(round(n / sum (n), 4), nsmall = 4))
+```
+
+The below shows that roughly 0.42% of the crimes occur outside the range of 7.77 Km from a precinct where as 99.57% of crimes happen in the 7.77 Km proximity to a precinct. 
+
+```{r}
+geo %>%
+  mutate (
+    check = sqrt (((lon - longitude) ^ 2) + ((lat - latitude) ^ 2)) <= 0.07
+    ) %>% 
+  group_by(check) %>% 
+  summarize (n = n()) %>%
+  mutate (prop = format(round(n / sum (n), 4), nsmall = 4))
+```
+
+The below shows that roughly 00.12% of the crimes occur outside the range of 8.88 Km from a precinct where as 99.87% of crimes happen in the 8.88 Km proximity to a precinct. 
+
+```{r}
+geo %>%
+  mutate (
+    check = sqrt (((lon - longitude) ^ 2) + ((lat - latitude) ^ 2)) <= 0.08
+    ) %>% 
+  group_by(check) %>% 
+  summarize (n = n()) %>%
+  mutate (prop = format(round(n / sum (n), 4), nsmall = 4))
+```
+
+The below shows that roughly 0.03% of the crimes occur outside the range of 9.99 Km from a precinct where as 99.96% of crimes happen in the 9.99 Km proximity to a precinct. 
+
+```{r}
+geo %>%
+  mutate (
+    check = sqrt (((lon - longitude) ^ 2) + ((lat - latitude) ^ 2)) <= 0.09
+    ) %>% 
+  group_by(check) %>% 
+  summarize (n = n()) %>%
+  mutate (prop = format(round(n / sum (n), 4), nsmall = 4))
+```
+
+As the below shows, roughly all the crimes have happened in a range of 11.11 Km of a precinct. This might be mainly due to having a precinct in every area of New York so that every crime is at least in range of a precinct. 
+
+```{r}
+geo %>%
+  mutate (
+    check = sqrt (((lon - longitude) ^ 2) + ((lat - latitude) ^ 2)) <= 0.1
+    ) %>% 
+  group_by(check) %>% 
+  summarize (n = n()) %>%
+  mutate (prop = format(round(n / sum (n), 4), nsmall = 4))
+```
+
+The result can be summed up in the below line graph where the relationship between distance and the proportion of crime occurred in that distance to precincts in NYC is clearly shown. 
+
+```{r}
+tribble(
+~distance, ~proportion,
+0.0001,99.71,
+0.0002,99.43,
+0.0003,97.07,
+0.0004,94.08,
+0.0005,91.77,
+0.0006,90.38,
+0.0007,88.95,
+0.0008,88.87,
+0.0009,88.48,
+0.001,88.33,
+0.002,85.74,
+0.003,81.85,
+0.004,78.09,
+0.005,73.54,
+0.006,68.46,
+0.007,63.27,
+0.008,58.10,
+0.009,53.38,
+0.01,49.05,
+0.02,18.18,
+0.03,7.30,
+0.04,4.14,
+0.05,2.64,
+0.06,1.07,
+0.07,00.42,
+0.08,00.12,
+0.09,00.03,
+0.1,00.01,
+) %>%
+  ggplot(mapping = aes (x = distance, y = proportion)) +
+  geom_line(mapping = aes (color = "blue")) + 
+  geom_point(mapping = aes (color = "red")) +
+  xlab('distance to precinct in differences in lat/long') +
+  ylab('proportion of crime happening outside the distance') +
+  ggtitle("Proportion of crime occurred in a range of distance to the precincts in New York City") +
+  theme(legend.position="none")
+
+```
+Before moving on to the geospatial visualization, we will test the equivalence of the "town" and "town2" variables. "town" represents "The name of the borough in which the incident occurred" and "town2" represents "the name of the town where the precinct is located". Before doing so, it is worth mentioning that 657 of the values in the "town" variable are "(null)", thus will be excluded. If we extract the observations where town and town2 are not equal, it is seen that out of the 396978 observations, in 175 the value in town and town2 are different. Actually in 832, town and town2 values are not equal but 657 of them have a null value for the "town" variable. Having a closer look, out of 175, the majority, specifically, 105 of the crimes happened in "Manhattan" but were solved in a precinct in "Queens". This can have several reasons such as not having enough staff at one of the stations in Manhattan. 
+
+
+```{r, warning = FALSE, message=FALSE}
+geo %>%
+  filter ( (tolower(town) == tolower(town2)) == FALSE ) %>% 
+  group_by(town, town2) %>%
+  summarise(n = n()) %>%
+  arrange (desc(n))
+```
+
+Note that in our analysis one assumption has been made: The precinct in which an incident has occurred is the nearest precinct to the crime. In other words, there are no other precinct nearer to the crime than that particular one. If this does not hold true, there was no need to join the two data sets "final_df" and "coord" to create the "geo" dataset. In fact, for each crime in the final_df dataset, we must have checked the distance to **ALL** precincts in the coord dataset. The least distance will be chosen as the distance for analysis (instead of the distance to the precinct where the incident has occurred). However, this method will most probably lead to the same result because our assumption that "The precinct in which an incident has occurred is the nearest precinct to the crime." is pretty much logical and feasible in real life. Finally, given the computation time for calculating for 396978 crimes and 77 precincts we will suffice with our current analysis.
+
+As the final step, a geospatial visualization of the density of crime in NYC has been created. 
+
+```{r}
+library (ggmap)
+nyc_bb <- c(
+  left = -74.3,
+  bottom = 40.45,
+  right = -73.6,
+  top = 40.95
+)
+
+map_nyc <- get_stamenmap(
+  bbox = nyc_bb,
+  zoom = 12
+) 
+  
+map_nyc %>%
+ggmap () +
+  geom_point(data = geo, mapping = aes (y = latitude , x = longitude), color = "blue", size = 2.5) +
+  stat_density_2d(data = geo, mapping = aes (x = lon, y = lat, fill = stat(level)), geom="polygon", bins = 10, alpha = 0.4) +
+  xlab('Longitude') +
+  ylab('Latitude') + 
+  ggtitle("The density of the crime in New York") +
+  coord_equal() +
+  scale_fill_viridis_c(option = "F")
+
+```
+
+Furthermore, for each town in New York City (namely, Bronx, Brooklyn, Staten Island, Queens, Manhattan) a separate geospatial plot has been created to see the density of crime on the map. Similarly, the plots include the location of each police station indicated in "blue". Note that the 657 observations that have no indicated town (the value was null) fall into no category and hence, have been excluded.
+
+```{r}
+bronx <- final_df %>%
+  filter (town == "BRONX") %>%
+  summarise( max_lat = max (lat), min_lat = min(lat), max_long = max(lon), min_long = min(lon))
+
+t <- c(
+  left = bronx$min_long,
+  bottom = bronx$min_lat,
+  right = bronx$max_long,
+  top = bronx$max_lat
+)
+
+map_t <- get_stamenmap(
+  bbox = t,
+  zoom = 13
+) 
+
+b <- geo %>%
+     filter (town == "BRONX")
+
+map_t %>%
+ggmap () +
+  geom_point(data = b, mapping = aes (y = latitude , x = longitude), color = "blue", size = 2.5) +
+  stat_density_2d(data = b, mapping = aes (x = lon, y = lat, fill = stat(level)), geom="polygon", bins = 10, alpha = 0.4) +
+  xlab('Longitude') +
+  ylab('Latitude') + 
+  ggtitle("The density of the crime in Bronx") +
+  coord_equal() +
+  scale_fill_viridis_c(option = "F")
+
+```
+
+
+
+```{r}
+
+# Brooklyn has null coordinates in the data set.
+brooklyn <- final_df %>%
+  filter (town == "BROOKLYN") %>%
+  summarise( max_lat = max (lat, na.rm = TRUE), min_lat = min(lat, na.rm = TRUE), max_long = max(lon, na.rm = TRUE), min_long = min(lon, na.rm = TRUE))
+
+t <- c(
+  left = brooklyn$min_long,
+  bottom = brooklyn$min_lat,
+  right = brooklyn$max_long,
+  top = brooklyn$max_lat
+)
+
+map_t <- get_stamenmap(
+  bbox = t,
+  zoom = 13
+) 
+
+b <- geo %>%
+     filter (town == "BROOKLYN")
+
+map_t %>%
+ggmap () +
+  geom_point(data = b, mapping = aes (y = latitude , x = longitude), color = "blue", size = 2.5) +
+  stat_density_2d(data = b, mapping = aes (x = lon, y = lat, fill = stat(level)), geom="polygon", bins = 10, alpha = 0.4) +
+  xlab('Longitude') +
+  ylab('Latitude') + 
+  ggtitle("The density of the crime in Brooklyn") +
+  coord_equal() +
+  scale_fill_viridis_c(option = "F")
+
+```
+
+```{r}
+
+staten <- final_df %>%
+  filter (town == "STATEN ISLAND") %>%
+  summarise( max_lat = max (lat), min_lat = min(lat), max_long = max(lon), min_long = min(lon))
+
+t <- c(
+  left = staten$min_long,
+  bottom = staten$min_lat,
+  right = staten$max_long,
+  top = staten$max_lat
+)
+
+map_t <- get_stamenmap(
+  bbox = t,
+  zoom = 13
+) 
+
+b <- geo %>%
+     filter (town == "STATEN ISLAND")
+
+map_t %>%
+ggmap () +
+  geom_point(data = b, mapping = aes (y = latitude , x = longitude), color = "blue", size = 2.5) +
+  stat_density_2d(data = b, mapping = aes (x = lon, y = lat, fill = stat(level)), geom="polygon", bins = 10, alpha = 0.4) +
+  xlab('Longitude') +
+  ylab('Latitude') + 
+  ggtitle("The density of the crime in STATEN ISLAND") +
+  coord_equal() +
+  scale_fill_viridis_c(option = "F")
+
+```
+
+```{r}
+
+queens <- final_df %>%
+  filter (town == "QUEENS") %>%
+  summarise( max_lat = max (lat), min_lat = min(lat), max_long = max(lon), min_long = min(lon))
+
+t <- c(
+  left = queens$min_long,
+  bottom = queens$min_lat,
+  right = queens$max_long,
+  top = queens$max_lat
+)
+
+map_t <- get_stamenmap(
+  bbox = t,
+  zoom = 13
+) 
+
+b <- geo %>%
+     filter (town == "QUEENS")
+
+map_t %>%
+ggmap () +
+  geom_point(data = b, mapping = aes (y = latitude , x = longitude), color = "blue", size = 2.5) +
+  stat_density_2d(data = b, mapping = aes (x = lon, y = lat, fill = stat(level)), geom="polygon", bins = 10, alpha = 0.4) +
+  xlab('Longitude') +
+  ylab('Latitude') + 
+  ggtitle("The density of the crime in QUEENS") +
+  coord_equal() +
+  scale_fill_viridis_c(option = "F")
+
+```
+
+```{r}
+
+manhattan <- final_df %>%
+  filter (town == "MANHATTAN") %>%
+  summarise( max_lat = max (lat), min_lat = min(lat), max_long = max(lon), min_long = min(lon))
+
+t <- c(
+  left = manhattan$min_long,
+  bottom = manhattan$min_lat,
+  right = manhattan$max_long,
+  top = manhattan$max_lat
+)
+
+map_t <- get_stamenmap(
+  bbox = t,
+  zoom = 13
+) 
+
+b <- geo %>%
+     filter (town == "MANHATTAN")
+
+map_t %>%
+ggmap () +
+  geom_point(data = b, mapping = aes (y = latitude , x = longitude), color = "blue", size = 2.5) +
+  stat_density_2d(data = b, mapping = aes (x = lon, y = lat, fill = stat(level)), geom="polygon", bins = 10, alpha = 0.4) +
+  xlab('Longitude') +
+  ylab('Latitude') + 
+  ggtitle("The density of the crime in MANHATTAN") +
+  coord_equal() +
+  scale_fill_viridis_c(option = "F")
+
+```
+
+
+Also further analysis shows that there are some differences between the density of crime for each crime type (Felony, Misdemeanor, Violation); specifically the following geospaital density plots show the differences in trend. As seen, the density geospatial plot for FELONY and MISDEMEANOR is very similar. Do they have a correlation? specifically, can one one conclude that felony and misdemeanor have a positive relationship? To make such a conclusion further analysis is required but based on the plots such an assumption might seem feasible. 
+
+
+```{r}
+g <- geo %>%
+  filter (crime_type == "VIOLATION")
+map_nyc %>%
+ggmap () +
+  geom_point(data = geo, mapping = aes (y = latitude , x = longitude), color = "blue", size = 3.5) +
+  stat_density_2d(data = g, mapping = aes (x = lon, y = lat, fill = stat(level)), geom="polygon", bins = 10, alpha = 0.4) +
+  xlab('Longitude') +
+  ylab('Latitude') +
+  ggtitle("The density of the crime for VIOLATION") +
+  coord_equal() +
+  scale_fill_viridis_c(option = "F")
+
+```
+
+```{r}
+g <- geo %>%
+  filter (crime_type == "FELONY")
+map_nyc %>%
+ggmap () +
+  geom_point(data = geo, mapping = aes (y = latitude , x = longitude), color = "blue", size = 3.5) +
+  stat_density_2d(data = g, mapping = aes (x = lon, y = lat, fill = stat(level)), geom="polygon", bins = 10, alpha = 0.4) +
+  xlab('Longitude') +
+  ylab('Latitude') +
+  ggtitle("The density of the crime for FELONY") +
+  coord_equal() +
+  scale_fill_viridis_c(option = "F")
+
+```
+
+
+```{r}
+g <- geo %>%
+  filter (crime_type == "MISDEMEANOR")
+map_nyc %>%
+ggmap () +
+  geom_point(data = geo, mapping = aes (y = latitude , x = longitude), color = "blue", size = 3.5) +
+  stat_density_2d(data = g, mapping = aes (x = lon, y = lat, fill = stat(level)), geom="polygon", bins = 10, alpha = 0.4) +
+  xlab('Longitude') +
+  ylab('Latitude') +
+  ggtitle("The density of the crime for MISDEMEANOR") +
+  coord_equal() +
+  scale_fill_viridis_c(option = "F")
+
+```
+
+
+#### 6) EDA (Exploratory Data Analysis):
+
+
+In this section, a few statistics and plots are provided to get a general overview of the data set: 
+
+```{r}
+df %>%
+  group_by(town) %>%
+  summarise(n = n()) %>%
+  mutate (prop = n / sum(n)) %>%
+  mutate(across(where(is.numeric), ~ round(., 3))) %>%
+  ggplot(aes(x=town, y=prop, fill="red")) + 
+  geom_col() +
+  geom_text(aes(label=prop), vjust=-0.25)
+```
+
+
+As seen in the above bar chart "Brooklyn" has the most number of crimes closely followed by "Manhattan". Furthermore, "Queens" and "Bronx" have roughly the same amount of crimes. However, "Staten Island" has much less number of crimes compared to the other four groups. Lastly, 657 of the crimes were not identified in which town they have occurred; out of which only 20 do not have a coordinates. Therefore, using geospatial data the town of 657-20 = 637 of the observations can be defined and added to the data set. Although the process is easily straight-forward, this has not been done in this analysis.  
+
+Moreover, it is interesting to check whether there is a difference between the number of crimes in different periods of the year, specifically in different months. For that purpose, the start_date variable has been separated to three columns "day", "month", and "year". Whether there is a difference between the number of crimes happening in months 1 2 3 (beginning of the year), months 4 5 6, and months 7 8 9 will be tested. Note that the dataset only contains up to the 30 of September 2022. Therefore, there cannot be any analysis done for the last three months of the year. 
+
+```{r}
+first <- df %>% 
+  separate(col = start_date, into = c ("month", "day", "year"), sep = "/") %>%
+  mutate (month = strtoi(month)) %>%
+  filter (month == 1 | month == 2 | month == 3) %>%
+  summarize (n = n())
+second <- df %>% 
+  separate(col = start_date, into = c ("month", "day", "year"), sep = "/") %>%
+  mutate (month = strtoi(month)) %>%
+  filter (month == 4 | month == 5 | month == 6) %>%
+  summarize (n = n())
+third <- df %>% 
+  separate(col = start_date, into = c ("month", "day", "year"), sep = "/") %>%
+  mutate (month = strtoi(month)) %>%
+  filter (month == 7 | month == 8 | month == 9) %>%
+  summarize (n = n())
+
+total <- rbind (first, second, third)
+
+total %>%
+  mutate(id = row_number(),
+         percent = n / sum (n)) %>% 
+  mutate(across(where(is.numeric), ~ round(., 3))) %>%
+  ggplot (mapping = aes(x = id, y=percent, fill = "red")) + 
+  geom_col() +
+  geom_text(aes(label=percent), vjust=-0.25)
+```
+
+
+As seen, roughly 44.8 percent of the crimes happen in the second season of the year. In other words, in months 4, 5, and 6 whereas 39.6 percent of the crimes in NYU have happened in the first three months. Only 15.6% of the crimes recorded in 2022 in NYU are allocated to months 7, 8, or 9. This is a bit far from the general expectation where one might predict that in the beginning of the year people will commit less crimes given that a new year has begun. 
+
+The same process for the "end date" variable of the crime is repeated.
+
+```{r}
+first2 <- df %>% 
+  separate(col = end_date, into = c ("month", "day", "year"), sep = "/") %>%
+  mutate (month = strtoi(month)) %>%
+  filter (month == 1 | month == 2 | month == 3) %>%
+  summarize (n = n())
+second2<- df %>% 
+  separate(col = end_date, into = c ("month", "day", "year"), sep = "/") %>%
+  mutate (month = strtoi(month)) %>%
+  filter (month == 4 | month == 5 | month == 6) %>%
+  summarize (n = n())
+third2 <- df %>% 
+  separate(col = end_date, into = c ("month", "day", "year"), sep = "/") %>%
+  mutate (month = strtoi(month)) %>%
+  filter (month == 7 | month == 8 | month == 9) %>%
+  summarize (n = n())
+
+total2 <- rbind (first2, second2, third2)
+
+total2 %>%
+  mutate(id = row_number(),
+         percent = n / sum (n)) %>% 
+  mutate(across(where(is.numeric), ~ round(., 3))) %>%
+  ggplot (mapping = aes(x = id, y=percent, fill = "red")) + 
+  geom_col() +
+  geom_text(aes(label=percent), vjust=-0.25)
+```
+
+
+As predicted, the starting date and the ending date of crimes share the same percentages (approximately) with only 0.1 percent difference in two groups. Specifically, only 39.5% of the crimes occurred in new york in 2022 have an end date between months 1- 3 (inclusive) and 15.7% of the crimes occurred in new york in 2022 have an end date between months 7- 9 (inclusive). For start date these percentages were 39.6% and 15.6% in turn. It is worth mentioning, if the percentages of any chart in this project do not add up to 100% it is because of rounding up the percentages to only three decimal point numbers. 
+
+
+We now move on to the starting time variable of the crime. The starting time is divided into four categories: 1- from 06:00 to 11:59 2- from 12:00 to 17:59. 3- from 18:00 to 23:59. 4- from 00:00 to 05:59. An investigation will be done on how many crimes fall into different categories. It is expected that at night specifically in categories 3 and 4 more crimes to be observed.
+
+```{r}
+first3 <- df %>% 
+  separate(col = start_time, into = c ("hour", "minute", "second"), sep = ":") %>%
+  mutate (hour = strtoi(hour)) %>%
+  filter (hour < 12 & hour >= 6) %>%
+  summarize (n = n())
+second3 <- df %>% 
+  separate(col = start_time, into = c ("hour", "minute", "second"), sep = ":") %>%
+  mutate (hour = strtoi(hour)) %>%
+  filter (hour >=12 & hour < 18) %>%
+  summarize (n = n())
+third3 <- df %>% 
+  separate(col = start_time, into = c ("hour", "minute", "second"), sep = ":") %>%
+  mutate (hour = strtoi(hour)) %>%
+  filter (hour >= 18 ) %>%
+  summarize (n = n())
+forth3 <- df %>% 
+  separate(col = start_time, into = c ("hour", "minute", "second"), sep = ":") %>%
+  mutate (hour = strtoi(hour)) %>%
+  filter (hour < 6) %>%
+  summarize (n = n())
+
+total3 <- rbind (first3, second3, third3, forth3)
+
+total3 %>%
+  mutate(id = row_number(),
+         percent = n / sum (n)) %>% 
+  mutate(across(where(is.numeric), ~ round(., 3))) %>%
+  ggplot (mapping = aes(x = id, y=percent, fill="red")) + 
+  geom_col() +
+  geom_text(aes(label=percent), vjust=-0.25)
+```
+
+
+This is very surprising. Most crimes in New York have occurred between 12:00 to 17:59 with about 36.9% of the total number of crimes. This number is closely followed by hours between 18:00 to 23:59 with 31.8%. The least percentage was devoted to 06:00-11:59 which is understandable. However, the number of crimes from 00:00-05:59 was low as well. 
+
+Same exploration is done in the following for the end time variable of the crime. 
+
+```{r}
+first4 <- df %>% 
+  separate(col = end_time, into = c ("hour", "minute", "second"), sep = ":") %>%
+  mutate (hour = strtoi(hour)) %>%
+  filter (hour < 12 & hour >= 6) %>%
+  summarize (n = n())
+second4 <- df %>% 
+  separate(col = end_time, into = c ("hour", "minute", "second"), sep = ":") %>%
+  mutate (hour = strtoi(hour)) %>%
+  filter (hour >=12 & hour < 18) %>%
+  summarize (n = n())
+third4 <- df %>% 
+  separate(col = end_time, into = c ("hour", "minute", "second"), sep = ":") %>%
+  mutate (hour = strtoi(hour)) %>%
+  filter (hour >= 18 ) %>%
+  summarize (n = n())
+forth4 <- df %>% 
+  separate(col = end_time, into = c ("hour", "minute", "second"), sep = ":") %>%
+  mutate (hour = strtoi(hour)) %>%
+  filter (hour < 6) %>%
+  summarize (n = n())
+
+total4 <- rbind (first4, second4, third4, forth4)
+
+total4 %>%
+  mutate(id = row_number(),
+         percent = n / sum (n)) %>% 
+  mutate(across(where(is.numeric), ~ round(., 3))) %>%
+  ggplot (mapping = aes(x = id, y=percent, fill="red")) + 
+  geom_col() +
+  geom_text(aes(label=percent), vjust=-0.25)
+```
+
+
+
+As expected, the percentages are very similar to the start time variable of the crime.
+
+Furthermore, the average mean it takes for a crime to start and end will be calculated. In other words, how long does it take for a crime to be solved (this time is the sum of the followings: 1- the time between the occurrence of the crime and reporting the crime to the police station. 2- the time between reporting the crime to the police station and the crime reported ended by the station). We can think of this as *how many days a police station is involved with a crime on average*. For calculating this we need to calculate the difference between seconds, minutes, hours, days, months, and years of the "start date", "start time", "end date", and "end time" variables. The final result will be a floating number representing the number of days it takes a crime to be solved. Note that every month has been roughly assigned 30 days and each year is assumed to have 365 days for simplicity of calculation.
+
+
+```{r}
+duration <- df %>%
+  separate(col = start_date, into = c ("month_start", "day_start", "year_start"), sep = "/") %>%
+  separate(col = start_time, into = c ("hour_start", "minute_start", "second_start"), sep = ":") %>%
+  separate(col = end_date, into = c ("month_end", "day_end", "year_end"), sep = "/") %>%
+  separate(col = end_time, into = c ("hour_end", "minute_end", "second_end"), sep = ":") %>%
+  mutate_if(is.character,as.numeric) %>%
+  mutate (month_difference = month_end - month_start,
+          day_difference = day_end - day_start,
+          year_difference = year_end - year_start,
+          hour_difference = hour_end - hour_start,
+          minute_difference = minute_end - minute_start,
+          second_difference = second_end - second_start, 
+          total = second_difference / (24 * 3600)+ minute_difference / (24 * 60) + hour_difference / 24 + 
+            day_difference + month_difference * 30 + year_difference * 365) %>%
+  mutate(across(where(is.numeric), ~ round(., 3))) %>%
+  select (total)
+
+df <- cbind(df, duration)
+```
+
+
+
+```{r}
+mean (df$total, na.rm = TRUE)
+```
+
+As seen, on average it takes about 15.75 days for a crime to be solved (the duration between the start and end of a crime). 
+
+```{r}
+df %>% distinct (crime_type)
+```
+
+
+```{r}
+df %>%
+  group_by(crime_type) %>%
+  summarise(n = n()) %>%
+  mutate (prop = n / sum (n)) %>%
+  mutate(across(where(is.numeric), ~ round(., 3))) %>%
+  ggplot (mapping = aes (x = crime_type, y=prop, fill ="red")) +
+  geom_col() +
+  geom_text(mapping = aes(label=prop), vjust = -0.25)
+```
+
+
+The dataset has three kinds of crime type; namely, "Felony", "MISDEMEANOR", and "VIOLATION". Particularly, 50.5% of the crimes are "MISDEMEANOR", 33.6% are "FELONY", and 15.9% are "VIOLATION". It is interesting to see the average duration for each type of crime:
+
+```{r}
+df %>%
+  group_by(crime_type) %>%
+  summarize ( m = mean (total, na.rm = TRUE)) %>%
+  mutate(across(where(is.numeric), ~ round(., 3))) %>%
+  ggplot(mapping = aes (x = crime_type, y = m, fill = "red")) +
+  geom_col() +
+  geom_text(mapping = aes(label = m), vjust=-0.25)
+```
+
+As seen above, "Misdemeanor" crimes take longer time to be solved with 16.2 days. This is followed by "Violation" crimes with an average time of 15.54 days for being solved. Both take longer time than "Felony" with 15.18 days.
+
+```{r}
+boxplot(total ~ crime_type, data = df)
+```
+
+As seen in the above box plots, all three crime types have outliers. We first exclude these outliers from the dataset. This is done by excluding the observations that have a duration higher than (mean + 3 * standard_deviation) or lower than (mean - 3 * standard_deviation) per crime type. These numbers have been used given that based on Chebyshev's Theorem even if the data is skewed roughly 89% of the data lies between the mentioned range. Thus, the most 5% and the least 5% duration are counted as outliers. 
+
+
+```{r}
+df1 <- df %>%
+  group_by(crime_type) %>%
+  filter ( ! ((total > mean (total, na.rm = TRUE) + 3 * sd (total, na.rm = TRUE)) | (total < mean (total, na.rm = TRUE) - 3 * sd (total, na.rm = TRUE))))
+boxplot(total ~ crime_type, data = df1)
+```
+
+Moving on, an Anova test will be used to see whether the differences in the means of the duration among the three categories of crime rates is a coincidence or not. Specifically:
+**null hypothesis**: There is no correlation between crime type and the duration of the crime. In other words, the means of the duration per crime type are equal.
+**alternative hypothesis**: At least, two of the three means are not equal. In other words, there is a significant correlation between the crime type and the duration of the crime. 
+
+Before running the One-way Anova test, the sample should have some underlying assumptions:
+
+1-	Variable type: There is one qualitative variable (crime_type) and one quantitative variable (total duration); so, this requirement is fulfilled. 
+2-	Independence: This is mainly based on the design of the experiment. It is assumed that the data has been collected correctly. Likewise, it will be assumed that the sample is a decent reflection of the population; meaning that no extra-ordinary events has happened in 2022 leading to the data being biased or the variables being correlated in any way.
+3-	Outliers: Looking at the box plots, there are no significant outliers because the outliers have been removed.
+4-	Equality of variances: The equality of the variances of the "crime type" categories must be checked beforehand. This can informally be seen from the above box plots. However, formally a Levene test will be used to ensure the homogeneity of the variances. The variances of the different groups should be equal if we want to run an Anova test. This is called homogeneity of the variances (homoscedasticity) as opposed to heteroscedasticity where the variances differ across groups. In the "Levene" test, the Null Hypothesis is: “All population variances are equal.” The Alternative Hypothesis is “At least two of them differ.”
+
+```{r}
+library (car)
+leveneTest(df1$total ~ df1$crime_type)
+```
+
+The p-value (2.2e-16) is seen to be lower than the usual significance level (0.05). Therefore, the null hypothesis is rejected and in other words, the variances are not homogeneous. In such a case a "Welch Anova" test is used if the data is normal. If the data does not have a normal distribution, a non-parametric test called "Kruskal-Wallis test" will be used. To check the normality a Shapiro-Wilk test is the most recommended test [National Library of Medicine, Normality Tests for Statistical Analysis: A Guide for Non-Statisticians](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3693611/). However, the function for this test in R has an upper limit of 5000 samples. The dataset in use has much more samples than that. Thus, an alternative popular normality test will be used: Kolmogorov-Smirnov test. In the "Kolmogorov-Smirnov" test, the null hypothesis (Ho) is that the values are from the same continuous distribution (normal distribution). The alternative hypothesis (Ha) is that the values are from different continuous distributions (non-normal distribution).
+
+```{r}
+ks.test(df1$total, "pnorm")
+```
+
+
+As seen, the p-value (2.2e-16) is lower than the significance level (0.05). Therefore, the null hypothesis is rejected and thus, the value does not have a normal distribution. This can also clearly be seen in the following QQ plot.
+
+```{r}
+qqPlot(df1$total, distribution="norm")
+```
+
+
+The data is not normal neither has a homogeneous variance, thus, an Anova test **cannot** be used. Instead a **Kruskal-Wallis test** will be used which is a *nonparametric test*, so the normality assumption neither the homogeneity requirement is not required. However, the independence assumption must still hold. This method uses sample medians instead of sample means to compare groups.
+
+```{r}
+kruskal.test(total ~ crime_type,
+  data = df1
+)
+```
+
+
+The null hypothesis is that the medians of all groups are equal, and the alternative hypothesis is that at least one population median of one group is different from the population median of at least one other group. Based on the p-value (2.2e-16), the null hypothesis is rejected with a significance level of (0.05). In other words, there is a significant correlation between the crime type and the duration of the crime. Specifically, "Misdemeanor" crimes in general take longer time to be solved than "Violation" crimes. Both take longer time than "Felony" crimes.
+
+Moving on to the status of the crime:
+
+```{r}
+df %>%
+  group_by(crime_completed) %>%
+  summarize (n= n()) %>%
+  ungroup() %>%
+  mutate (prop = n / sum (n)) %>%
+  mutate(across(where(is.numeric), ~ round(., 3))) %>%
+  ggplot (mapping = aes (x = crime_completed, y = prop, fill = "red")) +
+  geom_col() + 
+  geom_text(mapping = aes(label=prop), vjust = -0.25)
+```
+
+
+Approximately, 1.4% of the crimes have been attempted but not completed. However, the majority of the crimes have been completed with 98.6%. Additionally, a chi-square test will be run between the two qualitative variables crime type and crime completed. The null hypothesis of the Chi-Square test is that no relationship exists on the categorical variables in the population; they are independent. The alternative hypothesis is that they are dependent. The following is the contingency table of the chi-square test:
+
+
+```{r}
+library (CGPfunctions)
+library (lsr)
+chi <- table(df$crime_type, df$crime_completed)
+ftable (chi)
+```
+
+
+As the following table shows, 99.8% of "VIOLATION" crimes have been "COMPLETED" whereas 99.4% of "MISDEMEANOR" have been completed. Lastly, 96.8% of "FELONY" crime type have been completed.
+
+```{r}
+df %>%
+  group_by(crime_type, crime_completed) %>%
+  summarize ( n = n()) %>%
+  ungroup() %>%
+  group_by(crime_type) %>%
+  mutate (prop = n / sum (n)) %>%
+  mutate(across(where(is.numeric), ~ round(., 3)))
+  
+```
+
+
+In the following, the result of the chi-square test can be seen. The p-value (2.2e-16) is lower than the significance level (0.05), thus the null hypothesis is rejected and it can be concluded that there is a relationship between the two categorical variables. 
+
+```{r}
+chisq.test(chi)
+```
+
+
+Further on, examining the premises of the crime, the result can be seen that most crimes have happened on the street with 28.4 percent of the total crimes reported. This number is closely followed by apartment houses with 22.4 percent of the total reports. In total it can be seen that 38.3 percent of the crimes have happened in residential areas. 
+
+
+```{r}
+df %>%
+  group_by(premises) %>%
+  summarise(n = n()) %>%
+  ungroup() %>%
+  mutate (prop = n / sum (n)) %>%
+  mutate(across(where(is.numeric), ~ round(., 3))) %>%
+  arrange(desc(n)) %>% head()
+  
+```
+
+
+Furthermore, roughly 12.4% of the crime have happened in stores. There are 84 premises mentioned in this dataset and further analysis can be done, but we will suffice with these results. Note that one should tidy the premises variable for further use; for instance, "BEAUTY/NAIL SALON" and "BEAUTY & NAIL SALON" refer to the same subject but have been separately categorized. Also, "COMMERCIAL BLDG" and "COMMERCIAL BUILDING" refer to the same thing. These are just some examples, many more can be found with detailed analysis.
+
+```{r}
+df %>%
+  group_by(premises) %>%
+  summarise(n = n()) %>%
+  ungroup() %>%
+  mutate (prop = n / sum (n)) %>%
+  mutate(across(where(is.numeric), ~ round(., 3))) %>%
+  filter (grepl("SUPERMARKET", premises, ignore.case = TRUE) |
+             grepl("STORE", premises, ignore.case = TRUE)) %>%
+  summarise(p = sum (prop))
+
+```
+
+With regards of the suspects age group, the following results are observed:
+
+```{r}
+suspect_age <- df %>%  
+  group_by(age) %>% 
+  summarize (n=n()) 
+```
+
+
+It is seen that some individuals have a negative age. This is obviously not correct, thus those with a negative age will fall into the category "non know". This is process is done in the following code block:
+
+```{r}
+not_known_age <- suspect_age %>%
+  filter (! (grepl ("18-24", age, ignore.case = TRUE) |
+               grepl ("25-44", age, ignore.case = TRUE) |
+                 grepl ("45-64", age, ignore.case = TRUE) | 
+                    grepl ("65+", age, ignore.case = TRUE) |
+                      grepl ("<18", age, ignore.case = TRUE))) %>%
+    summarise(n= sum (n)) %>%
+    mutate (age = "UNKNOWN")
+
+suspect_age <-  rbind(suspect_age %>%
+  filter ( ((grepl ("18-24", age, ignore.case = TRUE) |
+               grepl ("25-44", age, ignore.case = TRUE) |
+                 grepl ("45-64", age, ignore.case = TRUE) | 
+                    grepl ("65+", age, ignore.case = TRUE) |
+                      grepl ("<18", age, ignore.case = TRUE)) & (age != "-65") )), not_known_age)
+
+#the result does not filter -65 out for some reason so (age != "-65") is needed. (I guess it has to do with how grepl work on regular expressions).
+```
+
+
+As see in the below bar charts, mainly the suspects have an age between 25-44 with 25.2 percent falling into this category; however a large proportion of the suspects' ages were not known (57%). The least suspects were for the category age above 65 with only 0.9%.
+
+```{r}
+suspect_age %>%
+  mutate (prop = n / sum(n)) %>%
+  mutate(across(where(is.numeric), ~ round(., 3))) %>%
+  ggplot (mapping = aes (x=age, y=prop, fill = "red")) +
+  geom_col() +
+  geom_text(mapping = aes(label=prop), vjust = -0.25)
+```
+
+
+It is also interesting to see the ages of the victims. Similarly to the suspects ages, in the victims ages there are also negative numbers which will be counted as unknown ages category.
+
+```{r}
+victim_age <- df %>%  
+  group_by(victim_age) %>% 
+  summarize (n=n()) 
+```
+
+
+```{r}
+not_known_age2 <- victim_age %>%
+  filter (! (grepl ("18-24", victim_age, ignore.case = TRUE) |
+               grepl ("25-44", victim_age, ignore.case = TRUE) |
+                 grepl ("45-64", victim_age, ignore.case = TRUE) | 
+                    grepl ("65+", victim_age, ignore.case = TRUE) |
+                      grepl ("<18", victim_age, ignore.case = TRUE))) %>%
+    summarise(n= sum (n)) %>%
+    mutate (victim_age = "UNKNOWN")
+
+victim_age <-  rbind(victim_age %>%
+  filter ( ((grepl ("18-24", victim_age, ignore.case = TRUE) |
+               grepl ("25-44", victim_age, ignore.case = TRUE) |
+                 grepl ("45-64", victim_age, ignore.case = TRUE) | 
+                    grepl ("65+", victim_age, ignore.case = TRUE) |
+                      grepl ("<18", victim_age, ignore.case = TRUE)) & (victim_age != "-65") )), not_known_age2) 
+
+#the result does not filter -65 out for some reason so (age != "-65") is needed. (I guess it has to do with how grepl work on regular expressions).
+```
+
+
+As see in the below bar charts, mainly the suspects have an age between 25-44, however a large proportion of the suspects' ages were not known. The least suspects were for the category age above 65. 
+
+```{r}
+victim_age %>%
+  mutate (prop = n / sum(n)) %>%
+  mutate(across(where(is.numeric), ~ round(., 3))) %>%
+  ggplot (mapping = aes (x=victim_age, y=prop, fill = "red")) +
+  geom_col() +
+  geom_text(mapping = aes(label=prop), vjust = -0.25)
+```
+
+
+Obviously, the ages of the victims are expected to be known more compared to the ages of the suspects as they are the ones reporting the crime. Accordingly, 28.2% of the victims ages are unknown. Again, most victims ages are 25-44 with 35.7% which is higher than the same category for the suspect age. However, the least this time is allocated to the under 18 age group where only 3.6 percent of the whole victims are devoted to this age group. 
+
+Furthermore, the suspects sex graphs show that 47.6 percent of the suspects were identified as male. The least is assigned to female with 12.8 percent. 18.5 percent of the suspects' sex was not identified and 21.1 were identified as non-binary.
+
+
+```{r}
+df %>%
+  group_by(sex) %>%
+  summarize (n = n()) %>%
+  ungroup() %>%
+  mutate (prop = n / sum(n)) %>%
+  mutate(across(where(is.numeric), ~ round(., 3))) %>%
+  ggplot (mapping = aes (x=sex, y=prop, fill = "red")) +
+  geom_col() +
+  geom_text(mapping = aes(label=prop), vjust = -0.25)
+```
+
+As for the victims sex, the most was for female with 38.6 percent followed by male with 34.9 percent. 
+```{r}
+df %>%
+  group_by(victim_sex) %>%
+  summarize (n = n()) %>%
+  ungroup() %>%
+  mutate (prop = n / sum(n)) %>%
+  mutate(across(where(is.numeric), ~ round(., 3))) %>%
+  ggplot (mapping = aes (x=victim_sex, y=prop, fill = "red")) +
+  geom_col() +
+  geom_text(mapping = aes(label=prop), vjust = -0.25)
+```
+
+
+Moving on to the suspects race, the most is for "black" with 29.2 percent followed by 25 percent for people of unknown race. The least is for the American Indian / Alaska Native group with only 2.9 of the proportions of the suspects.
+
+```{r}
+df %>%
+  group_by(race) %>%
+  summarize (n = n()) %>%
+  ungroup() %>%
+  mutate (prop = n / sum(n)) %>%
+  mutate(across(where(is.numeric), ~ round(., 3))) %>%
+  ggplot (mapping = aes (x=race, y=prop, fill = "red")) +
+  geom_col() +
+  geom_text(mapping = aes(label=prop), vjust = -0.25) +
+  coord_flip()
+```
+
+
+Finally, for the victims race the most group with 30.2 percent was people with unknown race. This was followed by black people with 24.8 percent. The least again was for American Indian / Alaska Native group with 0.4% (not considering the empty entries).
+
+```{r}
+df %>%
+  group_by(victim_race) %>%
+  summarize (n = n()) %>%
+  ungroup() %>%
+  mutate (prop = n / sum(n)) %>%
+  mutate(across(where(is.numeric), ~ round(., 3))) %>%
+  ggplot (mapping = aes (x=victim_race, y=prop, fill = "red")) +
+  geom_col() +
+  geom_text(mapping = aes(label=prop), vjust = -0.25) +
+  coord_flip()
+```
+
+
+There can be much more analysis done on the data set, but we will stop at this point. Should you have any questions or suggestions about the methods or future work, please send an email to the following address: [Contact me](mailto:m.haghshenas@uu.students.nl)
+
+
+</div>
