@@ -51,6 +51,6 @@ For further information on the project please consult the *proposal*, *report*, 
 5- Vizualization
 6- EDA (Exploratory Data Analysis)
 
-Ultimately, for the conclusion, it seems that, as expected, neighbourhoods nearby a police station have less crime rate in general. However, this might be controversial and as mentioned, the crime rate depends on many other factors such as educational level of the neighbourhood. Moreover, the *perfect distance* from a police patrol to have lower crime rates in different neighboorhoods of a town is much more complicated.
+Ultimately, for the conclusion, it seems that, as expected, neighbourhoods nearby a police station have less crime rate in general (however, finding the *perfect distance* from a police patrol for lower crime rates is much more complicated.). However, this might be controversial and as mentioned, the crime rate depends on many other factors such as educational level of the neighbourhood.
 
 Thank you for looking at my project. Should you have any suggestions or projects, please contact me via mehradhqs@gmail.com or m.haghshenas@students.uu.nl
