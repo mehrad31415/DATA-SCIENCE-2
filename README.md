@@ -40,4 +40,17 @@ NYPD Complaint Data Current (Year To Date). (n.d.). NYC Open Data. https://data.
 
 Precincts - NYPD. (n.d.). https://www.nyc.gov/site/nypd/bureaus/patrol/precincts-landing.page*
 
+### Notes
 
+For further information on the project please consult the *proposal*, *report*, and the *graphs*. In the report, we have thoroughly explained the full process of the research, the visualizations, and the conclusions. At the last, we have eplored other features of the data set unrelated to the research question which might be interesting. This can be seen in section 6 of the report. Accordingly, the report is divided into six sections:
+
+1- Research Question
+2- Introduction
+3- NYPD crime dataset
+4- Police stations in NYC dataset
+5- Vizualization
+6- EDA (Exploratory Data Analysis)
+
+Ultimately, for the conclusion, it seems that, as expected, neighbourhoods nearby a police station have less crime rate in general. However, this might be controversial and as mentioned, the crime rate depends on many other factors such as educational level of the neighbourhood. Moreover, the *perfect distance* from a police patrol to have lower crime rates in different neighboorhoods of a town is much more complicated.
+
+Thank you for looking at my project. Should you have any suggestions, please contact me via mehradhqs@gmail.com or m.haghshenas@students.uu.nl
