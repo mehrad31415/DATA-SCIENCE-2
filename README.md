@@ -1,7 +1,6 @@
 # DATA-SCIENCE-2
 This work is the final project of the “Introduction to Data Science” course.
 
-### Mehrad Haghshenas
 ##### November 26, 2022
 
 ### 1. Research Question
